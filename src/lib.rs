@@ -69,6 +69,62 @@ impl Value<'_> {
             _ => MajorType::SimpleValueOrFloat,
         }
     }
+
+    pub fn as_integer(&self) -> Option<&types::CborInteger> {
+        match self {
+            Self::Integer(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<&types::CborFloat> {
+        match self {
+            Self::Float(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_string(&self) -> Option<&str> {
+        match self {
+            Self::String(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_bytes(&self) -> Option<&[u8]> {
+        match self {
+            Self::Bytes(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::Bool(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn as_simple_value(&self) -> Option<u8> {
+        match self {
+            Self::SimpleValue(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn as_sequence(&self) -> Option<&types::CborSequence<Self>> {
+        match self {
+            Self::Sequence(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_map(&self) -> Option<&types::CborSequence<(Self, Self)>> {
+        match self {
+            Self::Map(v) => Some(v),
+            _ => None,
+        }
+    }
 }
 
 /// Builds an indefinite length Array
