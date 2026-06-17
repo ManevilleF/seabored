@@ -289,6 +289,7 @@ mod tests {
         v5: Vec<u8>,
         v6: f32,
         v7: Option<i64>,
+        v7_pos: Option<i64>,
         #[serde(borrow)]
         v8: Tagged<'a, { Repo::TV }, bool>,
         #[serde(borrow)]
@@ -315,6 +316,7 @@ mod tests {
                 v5: vec![1, 2, 3, 4, 5, 6],
                 v6: std::f32::consts::PI,
                 v7: Some(-100),
+                v7_pos: Some(100),
                 v8: false.into(),
                 v9: Tagged::from(std::borrow::Cow::Owned(vec![7, 8, 9].into())),
                 v10: SimpleValue(59),

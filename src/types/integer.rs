@@ -273,9 +273,10 @@ macro_rules! impl_int_conversion_cbor_int {
         impl From<$repr> for CborInteger {
             #[cfg_attr(feature = "inline-nontrivial", inline)]
             fn from(value: $repr) -> Self {
+                let negative = value.is_negative();
                 Self {
-                    negative: value.is_negative(),
-                    value: value.unsigned_abs().saturating_sub(1).into(),
+                    negative,
+                    value: value.unsigned_abs().saturating_sub(negative as _).into(),
                 }
             }
         }
