@@ -1,0 +1,9 @@
+debug/
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+flamegraph.svg
+perf.data*
+profile.json.gz
+fuzz-*.log

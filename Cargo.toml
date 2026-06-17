@@ -1,0 +1,82 @@
+[package]
+name = "seabored"
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.95"
+include = ["src/**/*", "LICENSE-*", "README.md"]
+description = "Implementation of the CBOR data format. Implements RFC8949 with the preferred-plus recommendations"
+readme = "README.md"
+documentation = "https://docs.rs/seabored"
+repository = "https://github.com/OtaK/seabored"
+license = "MIT OR Apache-2.0"
+keywords = ["cbor", "serde", "facet", "rfc8949", "preferred-plus"]
+categories = ["parser-implementations", "encoding", "wasm"]
+authors = ["Mathieu Amiot <amiot.mathieu@gmail.com>"]
+
+[package.metadata.docs.rs]
+features = [
+    "serde",
+    "facet",
+]
+rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
+
+[features]
+default = ["inline-nontrivial"]
+# Enables inlining on non-trivial functions to increase performance at the cost of code size
+inline-nontrivial = []
+serde = ["dep:serde"]
+facet = ["dep:facet"]
+derive = []
+
+[dependencies]
+thiserror = "2"
+half = "2"
+simdutf8 = "0.1"
+serde = { version = "1", optional = true }
+facet = { version = "0.46", optional = true }
+
+[dependencies.winnow]
+version = "1"
+default-features = false
+features = ["binary", "simd"]
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+hex-literal = "1"
+pretty_assertions = "1"
+seabored = { path = ".", features = ["inline-nontrivial", "serde"] }
+color-eyre = "0.6"
+divan = "0.1"
+serde_tuple = "1"
+serde_bytes = "0.11"
+serde_repr = "0.1"
+indexmap = { version = "2.14", features = ["serde"] }
+cbor4ii = { version = "1", features = ["half-f16", "use_std", "serde1"] }
+ciborium = "0.2"
+
+[target.'cfg(not(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown")))'.dev-dependencies]
+gungraun = "0.19.2"
+criterion = "0.8"
+
+[target.'cfg(not(any(target_env = "msvc", all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))))'.dev-dependencies]
+tikv-jemallocator = "0.7"
+
+[[bench]]
+name = "perf"
+required-features = ["serde", "inline-nontrivial"]
+harness = false
+
+[[bench]]
+name = "perf_divan"
+harness = false
+
+[[bench]]
+name = "perf_instr"
+harness = false
+
+[profile.bench]
+opt-level = 3
+debug = true
+lto = 'fat'
+debug-assertions = false
+codegen-units = 1
