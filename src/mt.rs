@@ -39,3 +39,15 @@ impl From<InitialByte> for MajorType {
         unsafe { std::mem::transmute(ib.0 >> 5u8) }
     }
 }
+
+impl From<&crate::types::CborInteger> for MajorType {
+    #[inline(always)]
+    fn from(value: &crate::types::CborInteger) -> Self {
+        // SAFETY: `negative` is a `bool` flag, and conveniently,
+        // Major types 0 and 1 match to positive and negative ints respectively
+        // Hence this transmute is always safe because:
+        // - when `negative` is true, we end up with the `1u8` value, matching the MajorType::NegativeUint discriminant
+        // - when `negative` is false, we end up with the `0u8` value, matching the MajorType::Uint discriminant
+        unsafe { std::mem::transmute(value.negative as u8) }
+    }
+}

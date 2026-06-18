@@ -363,13 +363,13 @@ fn parse_value_inner<'i>(
             ib::consts::IB_UNDEFINED => Value::Undefined,
             ib::consts::IB_SIMPLE_VALUE_NEXT_BYTE => Value::SimpleValue(value_or_len.try_into()?),
             ib::consts::IB_FLOAT_16 => {
-                Value::Float(CborFloat::from(f16::from_bits(value_or_len.try_into()?))).into()
+                Value::Float(CborFloat::from(f16::from_bits(value_or_len.try_into()?)))
             }
             ib::consts::IB_FLOAT_32 => {
-                Value::Float(CborFloat::from(f32::from_bits(value_or_len.try_into()?))).into()
+                Value::Float(CborFloat::from(f32::from_bits(value_or_len.try_into()?)))
             }
             ib::consts::IB_FLOAT_64 => {
-                Value::Float(CborFloat::from(f64::from_bits(value_or_len.into()))).into()
+                Value::Float(CborFloat::from(f64::from_bits(value_or_len.into())))
             }
             _ => return cut_err(input),
         },

@@ -50,10 +50,10 @@ macro_rules! impl_int_conversions_cbor_int_value {
             }
         }
 
-        impl Into<$repr> for CborIntegerValue {
+        impl From<CborIntegerValue> for $repr {
             #[inline(always)]
-            fn into(self) -> $repr {
-                self.0
+            fn from(civ: CborIntegerValue) -> $repr {
+                civ.0
             }
         }
     };
@@ -254,17 +254,17 @@ macro_rules! impl_int_conversion_cbor_int {
             }
         }
 
-        impl Into<$repr> for CborInteger {
+        impl From<CborInteger> for $repr {
             #[inline(always)]
-            fn into(self) -> $repr {
-                self.value.into()
+            fn from(ci: CborInteger) -> $repr {
+                ci.value.into()
             }
         }
 
-        impl Into<$repr> for &CborInteger {
+        impl From<&CborInteger> for $repr {
             #[inline(always)]
-            fn into(self) -> $repr {
-                self.value.into()
+            fn from(ci: &CborInteger) -> $repr {
+                ci.value.into()
             }
         }
     };
@@ -375,6 +375,26 @@ impl CborSerialize for u64 {
     }
 }
 
+impl CborSerialize for u128 {
+    #[cfg_attr(feature = "inline-nontrivial", inline)]
+    fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
+        if let Ok(u64_v) = u64::try_from(*self) {
+            return u64_v.cbor_serialize_to(writer);
+        }
+
+        let bytes = self.to_be_bytes();
+        let offset = bytes.iter().position(|&b| b != 0x00).unwrap_or(bytes.len());
+
+        // This is actually a tagged value so it's a tad special
+        Ok(
+            // Write tag first - thankfully it fits in the IB so no need of extra bytes
+            writer.write(&[ib::consts::IB_UNSIGNED_BIG_NUM])?
+            // Then the value as bytes
+            + CborIntegerValue::serialize_inline_bytes(&bytes[offset..], MajorType::Bytes, writer)?,
+        )
+    }
+}
+
 impl CborSerialize for i8 {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
@@ -432,9 +452,32 @@ impl CborSerialize for i64 {
         let mut ui = (self >> (i64::BITS - 1)) as u64;
         let mt = (ui & ib::consts::IB_SMALL_NEGATIVE_UINT as u64) as u8;
         ui ^= *self as u64;
-        let mut buf = [mt + ib::consts::IB_UINT_64, 0, 0, 0, 0, 0, 0, 0, 0];
+        let mut buf = [mt | ib::consts::IB_UINT_64, 0, 0, 0, 0, 0, 0, 0, 0];
         buf[1..].copy_from_slice(&ui.to_be_bytes());
         writer.write(&buf)
+    }
+}
+
+impl CborSerialize for i128 {
+    #[cfg_attr(feature = "inline-nontrivial", inline)]
+    fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
+        if let Ok(i64_v) = i64::try_from(*self) {
+            return i64_v.cbor_serialize_to(writer);
+        }
+
+        let mut ui = (self >> (i128::BITS - 1)) as u128;
+        let mt = self.is_negative() as u8;
+        ui ^= *self as u128;
+        let bytes = ui.to_be_bytes();
+        let offset = bytes.iter().position(|&b| b != 0x00).unwrap_or(bytes.len());
+
+        // This is actually a tagged value so it's a tad special
+        Ok(
+            // Write tag first - thankfully it fits in the IB so no need of extra bytes
+            writer.write(&[mt | ib::consts::IB_UNSIGNED_BIG_NUM])?
+            // Then the value as bytes
+            + CborIntegerValue::serialize_inline_bytes(&bytes[offset..], MajorType::Bytes, writer)?,
+        )
     }
 }
 
@@ -533,6 +576,42 @@ impl<'a> CborDeserialize<'a> for u64 {
             crate::ib::AdditionalInfoAction::Uint64 => reader.read_be_u64()?,
             _ => return Err(SeaboredDeError::IllegalAdditionalInfo(ai.0)),
         })
+    }
+}
+
+impl<'a> CborDeserialize<'a> for u128 {
+    #[cfg_attr(feature = "inline-nontrivial", inline)]
+    fn cbor_deserialize_from<R: Read<'a>>(reader: &mut R) -> Result<Self, SeaboredDeError<'a>>
+    where
+        Self: Sized + 'a,
+    {
+        let tag_ib = InitialByte::peek(reader)?;
+        // Not a bignum, fall back to the uXX chain
+        if tag_ib.mt() == MajorType::Uint {
+            return u64::cbor_deserialize_from(reader).map(Into::into);
+        }
+
+        // Check if it's the correct tag
+        if tag_ib.0 != ib::consts::IB_UNSIGNED_BIG_NUM {
+            return Err(SeaboredDeError::IncorrectInitialByte {
+                actual: tag_ib.0,
+                expected: ib::consts::IB_UNSIGNED_BIG_NUM,
+            });
+        }
+
+        // Skip over the Tag IB
+        reader.advance(1)?;
+
+        let wire_bytes = std::borrow::Cow::<[u8]>::cbor_deserialize_from(reader)?;
+        // Short circuit here. A branch is prolly cheaper than the copy
+        if wire_bytes.is_empty() {
+            return Ok(0);
+        }
+
+        let mut bytes = [0u8; _];
+        // Yep we need to copy here
+        bytes[wire_bytes.len() - 16..].copy_from_slice(&wire_bytes);
+        Ok(u128::from_be_bytes(bytes))
     }
 }
 
@@ -644,5 +723,57 @@ impl<'a> CborDeserialize<'a> for i64 {
         };
 
         Ok(-(matches!(mt, MajorType::NegativeUint) as i64) ^ value_u64 as i64)
+    }
+}
+
+impl<'a> CborDeserialize<'a> for i128 {
+    #[cfg_attr(feature = "inline-nontrivial", inline)]
+    fn cbor_deserialize_from<R: Read<'a>>(reader: &mut R) -> Result<Self, SeaboredDeError<'a>>
+    where
+        Self: Sized + 'a,
+    {
+        let tag_ib = InitialByte::peek(reader)?;
+        // If it's a u128 on the wire, decode and try to cast it
+        if tag_ib.0 == ib::consts::IB_UNSIGNED_BIG_NUM {
+            return Ok(Self::try_from(u128::cbor_deserialize_from(reader)?)?);
+        }
+
+        // If not a bignum, fall back to the uXX chain
+        let tag_mt = tag_ib.mt();
+
+        match tag_ib.mt() {
+            MajorType::Uint => return u64::cbor_deserialize_from(reader).map(Into::into),
+            MajorType::NegativeUint => return i64::cbor_deserialize_from(reader).map(Into::into),
+            MajorType::Tagged => {} // This is the only acceptable major type
+            _ => {
+                return Err(SeaboredDeError::IncorrectMajorType {
+                    actual: tag_mt,
+                    expected: &[MajorType::Uint, MajorType::NegativeUint, MajorType::Tagged],
+                });
+            }
+        }
+
+        // Check if it's the correct tag
+        if tag_ib.0 != ib::consts::IB_NEGATIVE_BIG_NUM {
+            return Err(SeaboredDeError::IncorrectInitialByte {
+                actual: tag_ib.0,
+                expected: ib::consts::IB_NEGATIVE_BIG_NUM,
+            });
+        }
+
+        // Skip over the Tag IB
+        reader.advance(1)?;
+
+        let wire_bytes = std::borrow::Cow::<[u8]>::cbor_deserialize_from(reader)?;
+        // Short circuit here. A branch is prolly cheaper than the copy
+        if wire_bytes.is_empty() {
+            return Ok(0);
+        }
+        let mut bytes = [0u8; _];
+        // Yep we need to copy here
+        bytes[wire_bytes.len() - 16..].copy_from_slice(&wire_bytes);
+        let value_u128 = u128::from_be_bytes(bytes);
+        // No need of shenanigans here since we know for sure it's a negative bignum
+        Ok(-1 ^ value_u128 as i128)
     }
 }

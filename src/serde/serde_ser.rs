@@ -58,6 +58,11 @@ impl<'a, W: Write> serde::Serializer for &'a mut Serializer<W> {
     }
 
     #[inline(always)]
+    fn serialize_i128(self, v: i128) -> Result<Self::Ok, Self::Error> {
+        v.cbor_serialize_to(&mut self.writer)
+    }
+
+    #[inline(always)]
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
         v.cbor_serialize_to(&mut self.writer)
     }
@@ -74,6 +79,11 @@ impl<'a, W: Write> serde::Serializer for &'a mut Serializer<W> {
 
     #[inline(always)]
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
+        v.cbor_serialize_to(&mut self.writer)
+    }
+
+    #[inline(always)]
+    fn serialize_u128(self, v: u128) -> Result<Self::Ok, Self::Error> {
         v.cbor_serialize_to(&mut self.writer)
     }
 

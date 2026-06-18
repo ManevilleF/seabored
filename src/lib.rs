@@ -57,10 +57,7 @@ impl Value<'_> {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     pub(crate) fn mt(&self) -> MajorType {
         match self {
-            Value::Integer(cbor_int) => cbor_int
-                .negative
-                .then_some(MajorType::NegativeUint)
-                .unwrap_or(MajorType::Uint),
+            Value::Integer(cbor_int) => MajorType::from(cbor_int),
             Value::Bytes(_) => MajorType::Bytes,
             Value::String(_) => MajorType::String,
             Value::Sequence(seq) => seq.mt,

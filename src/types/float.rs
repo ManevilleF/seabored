@@ -38,10 +38,10 @@ impl From<f64> for CborFloat {
     }
 }
 
-impl Into<f64> for CborFloat {
+impl From<CborFloat> for f64 {
     #[inline(always)]
-    fn into(self) -> f64 {
-        self.0
+    fn from(cf: CborFloat) -> f64 {
+        cf.0
     }
 }
 
@@ -95,7 +95,7 @@ impl CborSerialize for CborFloat {
 
         if let Some(f16_value) = maybe_f16 {
             f16_value.cbor_serialize_to(writer)
-        } else if let Some(f32_value) = self.try_cast_f32().ok() {
+        } else if let Ok(f32_value) = self.try_cast_f32() {
             f32_value.cbor_serialize_to(writer)
         } else {
             self.0.cbor_serialize_to(writer)

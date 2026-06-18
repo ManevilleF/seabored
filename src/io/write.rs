@@ -27,9 +27,7 @@ pub trait Write {
                 {
                     continue;
                 }
-                Err(SeaboredSerError::IoKind(error))
-                    if error == std::io::ErrorKind::Interrupted =>
-                {
+                Err(SeaboredSerError::IoKind(std::io::ErrorKind::Interrupted)) => {
                     continue;
                 }
                 Err(error) => return Err(error),
@@ -45,7 +43,7 @@ pub trait Write {
 }
 
 // Blanket impls
-impl<'data, W: Write + ?Sized> Write for &mut W {
+impl<W: Write + ?Sized> Write for &mut W {
     #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize, SeaboredSerError> {
         (**self).write(buf)
@@ -67,7 +65,7 @@ impl<'data, W: Write + ?Sized> Write for &mut W {
     }
 }
 
-impl<'data, W: Write + ?Sized> Write for Box<W> {
+impl<W: Write + ?Sized> Write for Box<W> {
     #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize, SeaboredSerError> {
         (**self).write(buf)
@@ -111,7 +109,7 @@ impl Write for &mut [u8] {
         let expected_len = buf.len();
         (self.write(buf)? == expected_len)
             .then_some(())
-            .ok_or_else(|| SeaboredSerError::IoKind(std::io::ErrorKind::WriteZero))
+            .ok_or(SeaboredSerError::IoKind(std::io::ErrorKind::WriteZero))
     }
 
     #[cfg_attr(feature = "inline-nontrivial", inline)]

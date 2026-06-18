@@ -98,6 +98,14 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
     }
 
     #[inline(always)]
+    fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_i128(i128::cbor_deserialize_from(&mut self.reader)?)
+    }
+
+    #[inline(always)]
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
@@ -127,6 +135,14 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
         V: serde::de::Visitor<'de>,
     {
         visitor.visit_u64(u64::cbor_deserialize_from(&mut self.reader)?)
+    }
+
+    #[inline(always)]
+    fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_u128(u128::cbor_deserialize_from(&mut self.reader)?)
     }
 
     #[inline(always)]

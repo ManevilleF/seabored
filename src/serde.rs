@@ -301,10 +301,7 @@ mod tests {
         #[serde(with = "serde_bytes")]
         v5: Vec<u8>,
         v6: f32,
-        i32_pos: i32,
-        i32_zero: i32,
-        i32_neg: i32,
-        i16_neg: i16,
+        v6_f64: f64,
         v7: Option<i64>,
         v7_pos: Option<i64>,
         #[serde(borrow)]
@@ -324,6 +321,16 @@ mod tests {
         data: SubTest<'a>,
         mune1: Mune,
         mune2: Mune,
+        u8max: u8,
+        u16max: u16,
+        u32max: u32,
+        u64max: u64,
+        biguint: u128,
+        i8min: i8,
+        i16min: i16,
+        i32min: i32,
+        i64min: i64,
+        bigsint: i128,
     }
 
     impl Default for Test<'_> {
@@ -335,10 +342,7 @@ mod tests {
                 v4: None,
                 v5: vec![1, 2, 3, 4, 5, 6],
                 v6: std::f32::consts::PI,
-                i32_neg: -1,
-                i32_zero: 0,
-                i32_pos: 1,
-                i16_neg: i16::MIN,
+                v6_f64: f64::MAX,
                 v7: Some(-100),
                 v7_pos: Some(100),
                 v8: false.into(),
@@ -356,6 +360,16 @@ mod tests {
                 },
                 mune1: Mune::Nothing,
                 mune2: Mune::Whatever { id: 100 },
+                u8max: u8::MAX,
+                u16max: u16::MAX,
+                u32max: u32::MAX,
+                u64max: u64::MAX,
+                biguint: u128::MAX,
+                i8min: i8::MIN,
+                i16min: i16::MIN,
+                i32min: i32::MIN,
+                i64min: i64::MIN,
+                bigsint: i128::MIN,
             }
         }
     }
