@@ -378,7 +378,7 @@ impl CborSerialize for u64 {
 impl CborSerialize for i8 {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
-        let mut ui = dbg!(self >> (i8::BITS - 1)) as u8;
+        let mut ui = (self >> (i8::BITS - 1)) as u8;
         let mt = ui & ib::consts::IB_SMALL_NEGATIVE_UINT;
         ui ^= *self as u8;
 
@@ -399,7 +399,6 @@ impl CborSerialize for i16 {
 
         let mut ui = (self >> (i16::BITS - 1)) as u16;
         let mt = (ui & ib::consts::IB_SMALL_NEGATIVE_UINT as u16) as u8;
-        dbg!(mt);
         ui ^= *self as u16;
         let mut buf = [mt | ib::consts::IB_UINT_16, 0, 0];
         buf[1..].copy_from_slice(&ui.to_be_bytes());
