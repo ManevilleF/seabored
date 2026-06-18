@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, io::BufRead};
 
 use crate::error::SeaboredDeError;
 
@@ -284,51 +284,68 @@ impl<'data> Read<'data> for &'data [u8] {
 /// ## Warning
 ///
 /// This is not zero-copy!
-pub struct StdReader<T: std::io::Read + std::io::Seek>(T);
+pub struct StdReader<R: std::io::Read>(std::io::BufReader<R>);
 
-impl<T: std::io::Read + std::io::Seek> StdReader<T> {
+impl<R: std::io::Read> StdReader<R> {
     #[inline(always)]
-    pub fn new(reader: T) -> Self {
-        Self::from(reader)
+    pub fn new(buf_reader: std::io::BufReader<R>) -> Self {
+        Self::from(buf_reader)
     }
 
     #[inline(always)]
-    pub fn into_inner(self) -> T {
+    pub fn into_inner(self) -> std::io::BufReader<R> {
         self.0
+    }
+
+    #[cfg_attr(feature = "inline-nontrivial", inline)]
+    fn require_buffer_filled(&mut self, len: usize) -> Result<(), std::io::ErrorKind> {
+        if self.0.buffer().len() >= len {
+            return Ok(());
+        }
+
+        let buf = self.0.fill_buf().map_err(|e| e.kind())?;
+
+        if buf.len() >= len {
+            Ok(())
+        } else {
+            Err(std::io::ErrorKind::UnexpectedEof)
+        }
     }
 }
 
-impl<T: std::io::Read + std::io::Seek> From<T> for StdReader<T> {
+impl<R: std::io::Read> From<std::io::BufReader<R>> for StdReader<R> {
     #[inline(always)]
-    fn from(value: T) -> Self {
+    fn from(value: std::io::BufReader<R>) -> Self {
         Self(value)
     }
 }
 
-impl<'data, T: std::io::Read + std::io::Seek> Read<'data> for StdReader<T> {
+impl<'data, T: std::io::Read> Read<'data> for StdReader<T> {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn peek_byte(&mut self) -> ReadResult<'data, u8> {
-        let b = self.read_byte()?;
-        // Walk back!
-        self.0.seek_relative(-1)?;
+        self.require_buffer_filled(1)
+            .map_err(SeaboredDeError::IoKind)?;
+        let b = unsafe { *self.0.buffer().as_ptr() };
         Ok(b)
     }
 
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn advance(&mut self, n: usize) -> ReadResult<'data, ()> {
-        self.0.seek_relative(n as i64)?;
+        self.0.consume(n);
         Ok(())
     }
 
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn read_byte(&mut self) -> ReadResult<'data, u8> {
-        let mut b = 0;
+        use std::io::Read as _;
+        let mut b = 0u8;
         self.0.read_exact(std::slice::from_mut(&mut b))?;
         Ok(b)
     }
 
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn read_slice<'a>(&'a mut self, len: usize) -> ReadResult<'data, Cow<'data, [u8]>> {
+        use std::io::Read as _;
         let mut buf = vec![0; len];
         self.0.read_exact(&mut buf)?;
         Ok(Cow::Owned(buf))
@@ -336,27 +353,32 @@ impl<'data, T: std::io::Read + std::io::Seek> Read<'data> for StdReader<T> {
 
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn read_array<const N: usize>(&mut self) -> ReadResult<'data, Cow<'data, [u8; N]>> {
+        use std::io::Read as _;
         let mut arr = [0; N];
         self.0.read_exact(&mut arr)?;
         Ok(Cow::Owned(arr))
     }
 }
 
-impl<T: std::io::Read + std::io::Seek> std::io::Read for StdReader<T> {
+// Blanket fwd impls for std::io stuff
+impl<T: std::io::Read> std::io::Read for StdReader<T> {
     #[inline(always)]
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.0.read(buf)
     }
 }
 
-impl<T: std::io::Read + std::io::Seek> std::io::Seek for StdReader<T> {
+impl<T: std::io::Read> std::io::Seek for StdReader<T>
+where
+    T: std::io::Seek,
+{
     #[inline(always)]
     fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
         self.0.seek(pos)
     }
 }
 
-impl<T: std::io::BufRead + std::io::Seek> std::io::BufRead for StdReader<T> {
+impl<T: std::io::BufRead> std::io::BufRead for StdReader<T> {
     #[inline(always)]
     fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
         self.0.fill_buf()
