@@ -301,6 +301,10 @@ mod tests {
         #[serde(with = "serde_bytes")]
         v5: Vec<u8>,
         v6: f32,
+        i32_pos: i32,
+        i32_zero: i32,
+        i32_neg: i32,
+        i16_neg: i16,
         v7: Option<i64>,
         v7_pos: Option<i64>,
         #[serde(borrow)]
@@ -331,6 +335,10 @@ mod tests {
                 v4: None,
                 v5: vec![1, 2, 3, 4, 5, 6],
                 v6: std::f32::consts::PI,
+                i32_neg: -1,
+                i32_zero: 0,
+                i32_pos: 1,
+                i16_neg: i16::MIN,
                 v7: Some(-100),
                 v7_pos: Some(100),
                 v8: false.into(),
@@ -354,6 +362,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test(unsupported = test)]
     fn can_roundtrip() {
+        use pretty_assertions::assert_eq;
         let value = Test::default();
 
         let mut buf = vec![];

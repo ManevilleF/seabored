@@ -378,9 +378,10 @@ impl CborSerialize for u64 {
 impl CborSerialize for i8 {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
-        let mut ui = (self >> (i8::BITS - 1)) as u8;
+        let mut ui = dbg!(self >> (i8::BITS - 1)) as u8;
         let mt = ui & ib::consts::IB_SMALL_NEGATIVE_UINT;
         ui ^= *self as u8;
+
         if ui <= IB_LIMIT {
             writer.write(&[mt | ui])
         } else {
@@ -398,6 +399,7 @@ impl CborSerialize for i16 {
 
         let mut ui = (self >> (i16::BITS - 1)) as u16;
         let mt = (ui & ib::consts::IB_SMALL_NEGATIVE_UINT as u16) as u8;
+        dbg!(mt);
         ui ^= *self as u16;
         let mut buf = [mt | ib::consts::IB_UINT_16, 0, 0];
         buf[1..].copy_from_slice(&ui.to_be_bytes());
@@ -550,12 +552,14 @@ impl<'a> CborDeserialize<'a> for i8 {
             });
         }
         let value_u8 = match ai.action()? {
-            crate::ib::AdditionalInfoAction::DoNothing => *ib,
+            crate::ib::AdditionalInfoAction::DoNothing => {
+                ib.0 - mt as u8 * ib::consts::IB_SMALL_NEGATIVE_UINT
+            }
             crate::ib::AdditionalInfoAction::Uint8 => reader.read_byte()?,
             _ => return Err(SeaboredDeError::IllegalAdditionalInfo(ai.0)),
         };
 
-        Ok(-(matches!(mt, MajorType::NegativeUint) as i8) ^ Self::try_from(value_u8)?)
+        Ok(-(matches!(mt, MajorType::NegativeUint) as i8) ^ value_u8 as i8)
     }
 }
 
@@ -574,13 +578,15 @@ impl<'a> CborDeserialize<'a> for i16 {
             });
         }
         let value_u16 = match ai.action()? {
-            crate::ib::AdditionalInfoAction::DoNothing => ib.0 as u16,
+            crate::ib::AdditionalInfoAction::DoNothing => {
+                (ib.0 - mt as u8 * ib::consts::IB_SMALL_NEGATIVE_UINT) as u16
+            }
             crate::ib::AdditionalInfoAction::Uint8 => reader.read_byte()? as u16,
             crate::ib::AdditionalInfoAction::Uint16 => reader.read_be_u16()?,
             _ => return Err(SeaboredDeError::IllegalAdditionalInfo(ai.0)),
         };
 
-        Ok(-(matches!(mt, MajorType::NegativeUint) as i16) ^ Self::try_from(value_u16)?)
+        Ok(-(matches!(mt, MajorType::NegativeUint) as i16) ^ value_u16 as i16)
     }
 }
 
@@ -599,7 +605,9 @@ impl<'a> CborDeserialize<'a> for i32 {
             });
         }
         let value_u32 = match ai.action()? {
-            crate::ib::AdditionalInfoAction::DoNothing => ib.0 as u32,
+            crate::ib::AdditionalInfoAction::DoNothing => {
+                (ib.0 - mt as u8 * ib::consts::IB_SMALL_NEGATIVE_UINT) as u32
+            }
             crate::ib::AdditionalInfoAction::Uint8 => reader.read_byte()? as u32,
             crate::ib::AdditionalInfoAction::Uint16 => reader.read_be_u16()? as u32,
             crate::ib::AdditionalInfoAction::Uint32 => reader.read_be_u32()?,
@@ -607,7 +615,7 @@ impl<'a> CborDeserialize<'a> for i32 {
             _ => return Err(SeaboredDeError::IllegalAdditionalInfo(ai.0)),
         };
 
-        Ok(-(matches!(mt, MajorType::NegativeUint) as i32) ^ Self::try_from(value_u32)?)
+        Ok(-(matches!(mt, MajorType::NegativeUint) as i32) ^ value_u32 as i32)
     }
 }
 
@@ -626,7 +634,9 @@ impl<'a> CborDeserialize<'a> for i64 {
             });
         }
         let value_u64 = match ai.action()? {
-            crate::ib::AdditionalInfoAction::DoNothing => ib.0 as u64,
+            crate::ib::AdditionalInfoAction::DoNothing => {
+                (ib.0 - mt as u8 * ib::consts::IB_SMALL_NEGATIVE_UINT) as u64
+            }
             crate::ib::AdditionalInfoAction::Uint8 => reader.read_byte()? as u64,
             crate::ib::AdditionalInfoAction::Uint16 => reader.read_be_u16()? as u64,
             crate::ib::AdditionalInfoAction::Uint32 => reader.read_be_u32()? as u64,
