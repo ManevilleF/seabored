@@ -319,7 +319,7 @@ impl<'a, W: Write> serde::Serializer for &'a mut Serializer<W> {
         written += variant.cbor_serialize_to(&mut self.writer)?;
         // start of map with field => value
         written += CborIntegerValue::from(len)
-            .serialize_complex_mt_preamble(MajorType::Array, &mut self.writer)?;
+            .serialize_complex_mt_preamble(MajorType::Map, &mut self.writer)?;
 
         Ok(SequenceSerializer {
             sized: true,

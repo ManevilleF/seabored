@@ -278,6 +278,19 @@ mod tests {
         pub const TV: u64 = 99999;
     }
 
+    #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    struct SubTest<'a> {
+        sub: (),
+        #[serde(with = "serde_bytes")]
+        data: &'a [u8],
+    }
+
+    #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    enum Mune {
+        Nothing,
+        Whatever { id: u32 },
+    }
+
     const TEST_CONST: u64 = 9999999;
     #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct Test<'a> {
@@ -304,6 +317,9 @@ mod tests {
         v14: Option<()>,
         v15: Tagged<'a, 420, Value<'a>>, // blaze it
         v16: Value<'a>,
+        data: SubTest<'a>,
+        mune1: Mune,
+        mune2: Mune,
     }
 
     impl Default for Test<'_> {
@@ -326,6 +342,12 @@ mod tests {
                 v14: Some(()),
                 v15: Tagged::from(Value::Bool(false)),
                 v16: Value::Tagged(((u32::MAX as u64).into(), Box::new(Value::Bool(true)))),
+                data: SubTest {
+                    sub: (),
+                    data: &[1, 43, 35, 64],
+                },
+                mune1: Mune::Nothing,
+                mune2: Mune::Whatever { id: 100 },
             }
         }
     }
