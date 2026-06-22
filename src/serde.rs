@@ -300,6 +300,8 @@ mod tests {
         v4: Option<u64>,
         #[serde(with = "serde_bytes")]
         v5: Vec<u8>,
+        // No serde_bytes
+        v5_a: Vec<u8>,
         v6: f32,
         v6_f64: f64,
         v7: Option<i64>,
@@ -318,6 +320,10 @@ mod tests {
         v14: Option<()>,
         v15: Tagged<'a, 420, Value<'a>>, // blaze it
         v16: Value<'a>,
+        #[serde(with = "serde_bytes")]
+        v17: [u8; 32],
+        // No serde_bytes
+        v17_a: [u8; 32],
         data: SubTest<'a>,
         mune1: Mune,
         mune2: Mune,
@@ -341,6 +347,7 @@ mod tests {
                 v3: (),
                 v4: None,
                 v5: vec![1, 2, 3, 4, 5, 6],
+                v5_a: vec![1, 2, 3, 4, 5, 6],
                 v6: std::f32::consts::PI,
                 v6_f64: f64::MAX,
                 v7: Some(-100),
@@ -354,6 +361,8 @@ mod tests {
                 v14: Some(()),
                 v15: Tagged::from(Value::Bool(false)),
                 v16: Value::Tagged(((u32::MAX as u64).into(), Box::new(Value::Bool(true)))),
+                v17: [0x00; 32],
+                v17_a: [0x00; 32],
                 data: SubTest {
                     sub: (),
                     data: &[1, 43, 35, 64],

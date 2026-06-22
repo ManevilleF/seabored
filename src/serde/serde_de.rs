@@ -322,7 +322,7 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
         V: serde::de::Visitor<'de>,
     {
         let ib = InitialByte::cbor_deserialize_from(&mut self.reader)?;
-        let mt = ib.mt();
+        let (mt, ai) = ib.mt_ai();
         if mt != MajorType::Array {
             return Err(SeaboredDeError::IncorrectMajorType {
                 actual: mt,
@@ -330,8 +330,8 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
             });
         }
 
-        // let deser_len: usize = ai.find_subsequent_len(&mut self.reader)?.try_into()?;
-
+        // Consume any subsequent length bytes so the reader is positioned at the first element.
+        let _deser_len = ai.find_subsequent_len(&mut self.reader)?;
         // if deser_len != len {
         // FIXME: Verify if that's needed or not?
         // return Err(SeaboredDeError::Io(std::io::Error::new(
