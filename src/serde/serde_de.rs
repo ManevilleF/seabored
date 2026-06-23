@@ -313,11 +313,13 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
 
         self.reader.advance(1)?;
 
-        let len = ai.find_subsequent_len(&mut self.reader)?;
-        visitor.visit_seq(SeqAccessor {
-            parent: self,
-            len: Some(len.try_into()?),
-        })
+        let len = match ai.find_subsequent_len(&mut self.reader) {
+            Ok(len) => Some(len.try_into()?),
+            Err(SeaboredDeError::IndefiniteLen) => None,
+            Err(e) => return Err(e),
+        };
+
+        visitor.visit_seq(SeqAccessor { parent: self, len })
     }
 
     #[cfg_attr(feature = "inline-nontrivial", inline)]
@@ -337,7 +339,11 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
         self.reader.advance(1)?;
 
         // Consume any subsequent length bytes so the reader is positioned at the first element.
-        let _deser_len = ai.find_subsequent_len(&mut self.reader)?;
+        let len = match ai.find_subsequent_len(&mut self.reader) {
+            Ok(_) => Some(len),
+            Err(SeaboredDeError::IndefiniteLen) => None,
+            Err(e) => return Err(e),
+        };
         // if deser_len != len {
         // FIXME: Verify if that's needed or not?
         // return Err(SeaboredDeError::Io(std::io::Error::new(
@@ -346,10 +352,7 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
         // )));
         // }
 
-        visitor.visit_seq(SeqAccessor {
-            parent: self,
-            len: Some(len),
-        })
+        visitor.visit_seq(SeqAccessor { parent: self, len })
     }
 
     #[inline(always)]
@@ -381,11 +384,12 @@ impl<'de, R: Read<'de>> serde::Deserializer<'de> for &mut Deserializer<'de, R> {
 
         self.reader.advance(1)?;
 
-        let len = ai.find_subsequent_len(&mut self.reader)?;
-        visitor.visit_map(SeqAccessor {
-            parent: self,
-            len: Some(len.try_into()?),
-        })
+        let len = match ai.find_subsequent_len(&mut self.reader) {
+            Ok(len) => Some(len.try_into()?),
+            Err(SeaboredDeError::IndefiniteLen) => None,
+            Err(e) => return Err(e),
+        };
+        visitor.visit_map(SeqAccessor { parent: self, len })
     }
 
     #[inline(always)]
@@ -664,5 +668,25 @@ impl<'a, 'de, R: Read<'de>> serde::de::MapAccess<'de> for SeqAccessor<'a, 'de, R
     #[inline(always)]
     fn size_hint(&self) -> Option<usize> {
         self.len
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[derive(Debug, serde::Deserialize)]
+    struct IndefiniteSeqMapStruct<'a> {
+        test: std::borrow::Cow<'a, str>,
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test(unsupported = test)]
+    fn indefinite_seq_map_struct() {
+        let v = crate::serde::from_slice::<IndefiniteSeqMapStruct>(
+            &mut &hex_literal::hex!(
+                "BF6474657374781F7468697274792D6F6E657468697274792D6F6E657468697274792D6F6E6531FF"
+            )[..],
+        )
+        .unwrap();
+
+        pretty_assertions::assert_eq!(v.test, "thirty-onethirty-onethirty-one1");
     }
 }
