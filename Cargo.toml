@@ -1,6 +1,6 @@
 [package]
 name = "seabored"
-version = "0.0.9"
+version = "0.0.10"
 edition = "2024"
 rust-version = "1.95"
 include = ["src/**/*", "LICENSE-*", "README.md"]
@@ -57,7 +57,7 @@ cbor4ii = { version = "1", features = ["half-f16", "use_std", "serde1"] }
 ciborium = "0.2"
 
 [target.'cfg(not(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown")))'.dev-dependencies]
-gungraun = "0.19.2"
+gungraun = "0.19.3"
 criterion = "0.8"
 
 [target.'cfg(not(any(target_env = "msvc", all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))))'.dev-dependencies]
