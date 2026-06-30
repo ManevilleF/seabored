@@ -413,6 +413,9 @@ impl CborSerialize for i8 {
 impl CborSerialize for i16 {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
+        if *self >= 0 {
+            return (*self as u16).cbor_serialize_to(writer);
+        }
         if let Ok(i8_v) = i8::try_from(*self) {
             return i8_v.cbor_serialize_to(writer);
         }
@@ -429,6 +432,9 @@ impl CborSerialize for i16 {
 impl CborSerialize for i32 {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
+        if *self >= 0 {
+            return (*self as u32).cbor_serialize_to(writer);
+        }
         if let Ok(i16_v) = i16::try_from(*self) {
             return i16_v.cbor_serialize_to(writer);
         }
@@ -445,6 +451,9 @@ impl CborSerialize for i32 {
 impl CborSerialize for i64 {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
+        if *self >= 0 {
+            return (*self as u64).cbor_serialize_to(writer);
+        }
         if let Ok(i32_v) = i32::try_from(*self) {
             return i32_v.cbor_serialize_to(writer);
         }
@@ -458,9 +467,26 @@ impl CborSerialize for i64 {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::{de::CborDeserialize, ser::CborSerialize};
+
+    #[test]
+    fn upper_bounded_unsigned_in_signed() {
+        let u8_value = u8::MAX - 1;
+        let i64_value = u8_value as i64;
+        let serialized = i64_value.cbor_serialize().unwrap();
+        let roundtripped_u8 = u8::cbor_deserialize_from(&mut &serialized[..]).unwrap();
+        assert_eq!(u8_value, roundtripped_u8);
+    }
+}
+
 impl CborSerialize for i128 {
     #[cfg_attr(feature = "inline-nontrivial", inline)]
     fn cbor_serialize_to<W: Write>(&self, writer: &mut W) -> Result<usize, SeaboredSerError> {
+        if *self >= 0 {
+            return (*self as u128).cbor_serialize_to(writer);
+        }
         if let Ok(i64_v) = i64::try_from(*self) {
             return i64_v.cbor_serialize_to(writer);
         }
